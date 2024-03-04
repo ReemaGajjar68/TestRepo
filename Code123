@@ -1,0 +1,121 @@
+Build registration module to login through username and password with authentication using an otp, change password and forgot 
+
+
+First, we need to install the required packages:
+
+pip install django
+pip install django-otp
+pip install django-phonenumber-field
+
+Next, create a new Django project and app:
+
+django-admin startproject myproject
+cd myproject
+python manage.py startapp myapp
+
+Then, add the following to myproject/settings.py:
+
+
+
+
+INSTALLED_APPS = [
+    ...
+    'myapp',
+    'django_otp',
+    'phonenumber_field',
+    ...
+]
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'django_otp.backends.OTPBackend',
+)
+
+SITE_ID = 1
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+Now, let's create the models:
+
+myapp/models.py:
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
+
+class User(AbstractUser):
+    phone_number = PhoneNumberField(unique=True)
+
+    def __str__(self):
+        return self.username
+
+myapp/admin.py
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from myapp.models import User
+
+admin.site.register(User, UserAdmin)
+
+myapp/view.py
+
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.utils.decorators import method_decorator
+from django.views import View
+from django_otp.decorators import otp_required
+from django_otp.plugins.otp_static.models import TOTPDevice
+from phonenumber_field.widgets import PhoneNumberPrefixWidget
+
+class LoginView(View):
+    def get(self, request):
+        return render(request, 'myapp/login.html')
+
+    def post(self, request):
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            if user.is_active:
+                login(request, user)
+                return redirect('myapp:dashboard')
+            else:
+                # handle inactive user
+        else:
+            # handle invalid login
+
+class LogoutView(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        logout(request)
+        return redirect('myapp:login')
+
+class DashboardView(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render(request, 'myapp/dashboard.html')
+
+class RegisterView(View):
+    def get(self, request):
+        return render(request, 'myapp/register.html')
+
+    def post(self, request):
+        username = request.POST['username']
+        email = request.POST['email']
+        password = request.POST['password']
+        phone_number = request.POST['phone_number']
+        user = User.objects.create_user(username=username, email=email, password=password)
+        user.phone_number = phone_number
+        user.save()
+        return redirect('myapp:login')
+
+class OTPView(View):
+    @method_decorator(otp_required)
+    def get(self, request, *args, **kwargs):
+        return render(request, 'myapp/otp.html')
+
+    def post(self, request, *args, **kwargs):
+        token = request.POST['token']
+        user = request.
+
+
+
